@@ -10,7 +10,7 @@ import (
 	"gopkg.in/resty.v1"
 )
 
-var urls = [...]string{"api.ipify.org", "ifconfig.me", "icanhazip.com", "ipecho.net/plain", "ifconfig.co"}
+var mirrors = []string{"api.ipify.org", "ifconfig.me", "icanhazip.com", "ipecho.net/plain", "ifconfig.co"}
 
 // DefaultUserAgent is the user agent which will be used for connection.
 // Note: changing this value may affect the result with some providers.
@@ -22,6 +22,17 @@ var Scheme = "https"
 //Debug requests
 var Debug = false
 
+// HttpClient is a placehold for alternative http client.
+// If it's not set (equal nil), then new client instance is generated for
+// every request
+var HttpClient *resty.Client
+
+// SetMirrors permit to override 3d party ip resolvers used in this library (if for some reason you want to
+// use your own)
+func SetMirrors(newUrls []string) {
+	mirrors = newUrls
+}
+
 func Get() (string, error) {
 	var pubIp string
 	var err error
@@ -32,7 +43,7 @@ func Get() (string, error) {
 		client.SetHeader("User-Agent", DefaultUserAgent)
 	}
 
-	for _, url := range urls {
+	for _, url := range mirrors {
 		pubIp, err = download(client, url)
 		if err != nil {
 			return pubIp, nil
