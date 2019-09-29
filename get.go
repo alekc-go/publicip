@@ -10,14 +10,17 @@ import (
 	"gopkg.in/resty.v1"
 )
 
-var mirrors = []string{"api.ipify.org", "ifconfig.me", "icanhazip.com", "ipecho.net/plain", "ifconfig.co"}
+var mirrors = []string{
+	"https://api.ipify.org",
+	"https://ifconfig.me",
+	"https://icanhazip.com",
+	"https://ipecho.net/plain",
+	"https://ifconfig.co",
+}
 
 // DefaultUserAgent is the user agent which will be used for connection.
 // Note: changing this value may affect the result with some providers.
 var DefaultUserAgent = "curl/7.58.0"
-
-//Scheme to be used in request (http/https)
-var Scheme = "https"
 
 //Debug requests
 var Debug = false
@@ -56,15 +59,25 @@ func Get() (string, error) {
 }
 
 func download(cl *resty.Client, url string) (string, error) {
-	resp, err := resty.R().
+	resp, err := cl.R().
 		SetHeader("User-Agent", DefaultUserAgent).
-		Get(Scheme + "://" + url)
+		Get(url)
+
+	//check for errors and valid response
 	if err != nil {
 		return "", err
 	}
+	if resp.StatusCode() != 200 {
+		return "", DownloadError{
+			StatusCode: resp.StatusCode(),
+			Body:       resp.Body(),
+			Url:        url,
+		}
+	}
+
 	pubIp := strings.TrimSpace(string(resp.Body()))
 	if net.ParseIP(pubIp) == nil {
-		return "", fmt.Errorf("invalid ip [%s]", pubIp)
+		return "", InvalidResponseError{Response: pubIp}
 	}
 	return pubIp, nil
 }
