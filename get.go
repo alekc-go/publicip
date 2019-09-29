@@ -60,7 +60,6 @@ func Get() (string, error) {
 
 func download(cl *resty.Client, url string) (string, error) {
 	resp, err := cl.R().
-		SetHeader("User-Agent", DefaultUserAgent).
 		Get(url)
 
 	//check for errors and valid response
