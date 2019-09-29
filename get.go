@@ -1,11 +1,8 @@
 package publicip
 
 import (
-	"errors"
-	"fmt"
 	"net"
 	"strings"
-	"time"
 
 	"gopkg.in/resty.v1"
 )
@@ -39,23 +36,21 @@ func SetMirrors(newUrls []string) {
 func Get() (string, error) {
 	var pubIp string
 	var err error
-	client := resty.New()
-	client.SetTimeout(time.Second)
-	if Debug {
+
+	client := HttpClient
+	if client == nil {
+		client = resty.New()
 		client.SetDebug(Debug)
 		client.SetHeader("User-Agent", DefaultUserAgent)
 	}
 
 	for _, url := range mirrors {
 		pubIp, err = download(client, url)
-		if err != nil {
+		if err == nil {
 			return pubIp, nil
 		}
-		if Debug {
-			fmt.Printf("Potential ip [%v] obtained from %s is invalid\n", pubIp, url)
-		}
 	}
-	return "", errors.New("couldn't obtain a valid ip from any source")
+	return "", MirrorsExausted{}
 }
 
 func download(cl *resty.Client, url string) (string, error) {

@@ -4,11 +4,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/jarcoal/httpmock"
 
 	"gopkg.in/resty.v1"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -19,19 +19,49 @@ func TestMain(m *testing.M) {
 	os.Exit(returnCode)
 }
 func TestSetMirrors(t *testing.T) {
-	newMirrors := []string{"www.google.com", "www.msn.com"}
-	assert.NotEqual(t, newMirrors, mirrors)
+	newMirrors := []string{
+		"https://www.google.com",
+		"https://www.msn.com",
+	}
+	require.NotEqual(t, newMirrors, mirrors)
 	SetMirrors(newMirrors)
-	assert.Equal(t, newMirrors, mirrors, "mirrors should be overriden")
+	require.Equal(t, newMirrors, mirrors, "mirrors should be overriden")
+}
+
+func TestGet(t *testing.T) {
+	restyClient := resty.New()
+	httpmock.ActivateNonDefault(restyClient.GetClient())
+	HttpClient = restyClient
+
+	fixture := `1.2.3.4`
+	responder := httpmock.NewStringResponder(503, fixture)
+
+	//lets assume that all mirrors have failed so far.
+	for _, url := range mirrors {
+		httpmock.RegisterResponder("GET", url, responder)
+	}
+	res, err := Get()
+	require.Equal(t, "", res)
+	require.Error(t, err)
+	require.IsType(t, MirrorsExausted{}, err)
+
+	//ok, lets return a valid result
+	httpmock.Reset()
+	responder = httpmock.NewStringResponder(200, fixture)
+	for _, url := range mirrors {
+		httpmock.RegisterResponder("GET", url, responder)
+	}
+	res, err = Get()
+	require.NoError(t, err)
+	require.Equal(t, fixture, res)
 }
 
 func TestDownload(t *testing.T) {
-	httpmock.Reset()
 	restyClient := resty.New()
 	httpmock.ActivateNonDefault(restyClient.GetClient())
 	res, err := download(restyClient, "")
-	assert.Error(t, err)
-	assert.Empty(t, res)
+	require.Error(t, err)
+	require.Empty(t, res)
 
 	fixture := `error`
 	responder := httpmock.NewStringResponder(503, fixture)
@@ -39,11 +69,11 @@ func TestDownload(t *testing.T) {
 	httpmock.RegisterResponder("GET", testUrl, responder)
 
 	res, err = download(restyClient, testUrl)
-	assert.Error(t, err)
-	assert.IsType(t, DownloadError{}, err)
-	assert.Equal(t, err.(DownloadError).Url, testUrl)
-	assert.Equal(t, err.(DownloadError).StatusCode, 503)
-	assert.Equal(t, err.(DownloadError).Body, []byte(fixture))
+	require.Error(t, err)
+	require.IsType(t, DownloadError{}, err)
+	require.Equal(t, err.(DownloadError).Url, testUrl)
+	require.Equal(t, err.(DownloadError).StatusCode, 503)
+	require.Equal(t, err.(DownloadError).Body, []byte(fixture))
 
 	//invalid response
 	httpmock.Reset()
@@ -51,15 +81,15 @@ func TestDownload(t *testing.T) {
 	responder = httpmock.NewStringResponder(200, fixture)
 	httpmock.RegisterResponder("GET", testUrl, responder)
 	res, err = download(restyClient, testUrl)
-	assert.Error(t, err)
-	assert.IsType(t, InvalidResponseError{}, err)
-	assert.Equal(t, err.(InvalidResponseError).Response, fixture)
+	require.Error(t, err)
+	require.IsType(t, InvalidResponseError{}, err)
+	require.Equal(t, err.(InvalidResponseError).Response, fixture)
 
 	httpmock.Reset()
 	fixture = `1.2.3.4`
 	responder = httpmock.NewStringResponder(200, fixture)
 	httpmock.RegisterResponder("GET", testUrl, responder)
 	res, err = download(restyClient, testUrl)
-	assert.NoError(t, err)
-	assert.Equal(t, fixture, res)
+	require.NoError(t, err)
+	require.Equal(t, fixture, res)
 }
