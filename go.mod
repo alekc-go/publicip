@@ -5,6 +5,6 @@ go 1.12
 require (
 	github.com/jarcoal/httpmock v1.0.4
 	github.com/stretchr/testify v1.3.0
-	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	gopkg.in/resty.v1 v1.12.0
 )
